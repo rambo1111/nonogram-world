@@ -1,3 +1,5 @@
+// src/lib/urlEncoder.ts
+
 import pako from 'pako';
 import { PuzzleData } from '../types/nonogram';
 
@@ -8,23 +10,27 @@ interface ShareablePuzzle extends PuzzleData {
 // Compresses the puzzle object into a URL-safe string
 export const encodePuzzle = (puzzle: ShareablePuzzle): string => {
   const jsonString = JSON.stringify(puzzle);
-  // pako.deflate returns a Uint8Array, not a string
   const compressed = pako.deflate(jsonString);
-  // Convert the Uint8Array to a binary string that btoa can handle
-  const binaryString = String.fromCharCode.apply(null, compressed as any);
+
+  // MODIFICATION: Process the Uint8Array in chunks to avoid the call stack error.
+  let binaryString = '';
+  const CHUNK_SIZE = 8192; // Process in chunks of 8KB.
+  for (let i = 0; i < compressed.length; i += CHUNK_SIZE) {
+    const chunk = compressed.subarray(i, i + CHUNK_SIZE);
+    binaryString += String.fromCharCode.apply(null, chunk as any);
+  }
+  
   return btoa(binaryString); // Base64 encode
 };
 
-// Decompresses the string from a URL back into a puzzle object
+// The decode function is correct and does not need changes.
 export const decodePuzzle = (encodedString: string): ShareablePuzzle | null => {
   try {
     const binaryString = atob(encodedString); // Base64 decode
-    // Convert the binary string back to a Uint8Array for pako
     const compressed = new Uint8Array(binaryString.length);
     for (let i = 0; i < binaryString.length; i++) {
       compressed[i] = binaryString.charCodeAt(i);
     }
-    // Inflate requires the { to: 'string' } option to return a string
     const jsonString = pako.inflate(compressed, { to: 'string' });
     return JSON.parse(jsonString);
   } catch (error) {

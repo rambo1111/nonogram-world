@@ -34,8 +34,8 @@ function App() {
   return (
     <Router>
       <Routes>
-        {/* The standalone route for shared puzzles */}
-        <Route path="/play/:encodedData" element={
+        {/* MODIFICATION: The route is now just "/play" without the ":encodedData" param */}
+        <Route path="/play" element={
           <div className="bg-pattern min-h-screen text-black relative overflow-hidden p-4 sm:p-8">
             <PlayPage />
           </div>

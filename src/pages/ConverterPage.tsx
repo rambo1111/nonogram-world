@@ -7,7 +7,7 @@ import NonogramGrid from "../components/features/nonogram-solver/NonogramGrid";
 import Card from "../components/shared/Card";
 import NeoButton from "../components/shared/NeoButton";
 import { PuzzleData } from "../types/nonogram";
-import { Play, Share2 } from "lucide-react";
+import { Play, Share2, Check } from "lucide-react";
 import { encodePuzzle } from "../lib/urlEncoder";
 
 const ConverterPage: React.FC = () => {
@@ -20,7 +20,11 @@ const ConverterPage: React.FC = () => {
   const [generatedGrid, setGeneratedGrid] = useState<number[][] | null>(null);
   const [generatedClues, setGeneratedClues] = useState<{ rows: string[][]; cols: string[][] } | null>(null);
   const [shareLink, setShareLink] = useState("");
+  // MODIFICATION: Add state to track if the link was just copied
+  const [isCopied, setIsCopied] = useState(false);
 
+
+  // No changes needed in these functions
   const handleFileSelect = (file: File | null) => {
     setSelectedFile(file);
     setShareLink("");
@@ -34,7 +38,6 @@ const ConverterPage: React.FC = () => {
       setImageDataUrl("");
     }
   };
-
   const handleGenerate = () => {
     if (!selectedFile) return;
     setShareLink("");
@@ -67,7 +70,6 @@ const ConverterPage: React.FC = () => {
     };
     reader.readAsDataURL(selectedFile);
   };
-
   const generateCluesFromGrid = (grid: number[][]) => {
     const cols = grid[0].length;
     const getCluesForLine = (line: number[]): string[] => {
@@ -85,7 +87,6 @@ const ConverterPage: React.FC = () => {
         cols: colClues.map(c => [...Array(maxColClues - c.length).fill(''), ...c]),
     });
   };
-
   const getPuzzleData = (): PuzzleData | null => {
     if (!generatedClues) return null;
     return {
@@ -94,25 +95,34 @@ const ConverterPage: React.FC = () => {
       clues: generatedClues,
     };
   };
-
   const handlePlay = () => {
     const puzzleData = getPuzzleData();
     if (puzzleData) {
       navigate('/game', { state: { puzzle: puzzleData } });
     }
   };
-  
+
+  // MODIFICATION: This function now copies to the clipboard
   const handleShare = () => {
     const puzzleData = getPuzzleData();
     if (!puzzleData || !imageDataUrl) return;
+
     const shareablePuzzle = { ...puzzleData, imageDataUrl };
     const encoded = encodePuzzle(shareablePuzzle);
-    const link = `${window.location.origin}/play/${encoded}`;
+    const link = `${window.location.origin}/play#${encoded}`;
     setShareLink(link);
+
+    // Use the Clipboard API to copy the link
+    navigator.clipboard.writeText(link).then(() => {
+      setIsCopied(true);
+      // Reset the button text after 2 seconds
+      setTimeout(() => setIsCopied(false), 2000);
+    }).catch(err => {
+      console.error("Failed to copy link: ", err);
+    });
   };
 
   return (
-    // FIXED: Added container classes to center the content
     <main className="container mx-auto flex flex-col items-center">
       <PageHeader title="Nonogram Maker" subtitle="Turn any image into a puzzle!" />
       <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-6xl">
@@ -126,7 +136,14 @@ const ConverterPage: React.FC = () => {
                 <NonogramGrid grid={generatedGrid as any} clues={generatedClues} onCellClick={() => {}} onClueChange={() => {}} isReadOnly={true} />
                 <div className="grid grid-cols-2 gap-4">
                   <NeoButton onClick={handlePlay} className="w-full text-xl py-3"> <Play size={24}/> Play Puzzle </NeoButton>
-                  <NeoButton onClick={handleShare} variant="accent" className="w-full text-xl py-3"> <Share2 size={24}/> Share Puzzle </NeoButton>
+                  {/* MODIFICATION: The share button now shows feedback when clicked */}
+                  <NeoButton onClick={handleShare} variant={isCopied ? "primary" : "accent"} className="w-full text-xl py-3">
+                    {isCopied ? (
+                      <><Check size={24} /> Copied!</>
+                    ) : (
+                      <><Share2 size={24} /> Share Puzzle</>
+                    )}
+                  </NeoButton>
                 </div>
                 {shareLink && (
                     <div className="mt-4">
